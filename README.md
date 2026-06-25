@@ -4,14 +4,15 @@ A small web app for recording your screen or camera, encrypting the result, and
 storing it on the [Sia](https://sia.tech) decentralized network. You get back a
 share link that expires whenever you choose.
 
-No accounts, no servers of ours, no analytics. Your videos are end-to-end
-encrypted and only the people you send the link to can watch them.
+No accounts of ours, no servers of ours, no analytics. Your videos are
+end-to-end encrypted and only people you send the link to can watch them.
 
 ## How it works
 
-1. **Sign in with a recovery phrase.** A new user generates a 12-word BIP-39
-   phrase; a returning user pastes theirs in. That phrase is the only key to
-   your account — write it down somewhere safe, because we can't recover it.
+1. **Sign in.** A new user generates a 12-word BIP-39 phrase (a returning user
+   pastes theirs in), then approves PrivRec once on the Sia Storage page. The
+   phrase is the only key to your account — write it down somewhere safe,
+   because we can't recover it.
 2. **Record.** Capture your camera (with mic) or your screen, right in the
    browser. Pick which camera/mic to use before you start.
 3. **Upload & share.** The recording is encrypted, uploaded to Sia, and you get
@@ -34,12 +35,10 @@ npm run dev      # start the dev server (http://localhost:5173)
 npm run build    # production build into dist/
 npm run preview  # preview the production build
 npm run lint     # eslint
+npm test         # run the unit tests
 ```
 
 You'll need a recent Node.js (18+).
-
-**Log in with Sia Storage** — Open the Sia Storage page and log in to PrivRec.
-You'll be signed in automatically once you're done.
 
 ## Where keys and data live
 
@@ -49,6 +48,9 @@ You'll be signed in automatically once you're done.
   non-extractable AES-GCM key in IndexedDB (the browser won't let any script
   read its raw bytes) and store only the ciphertext. See
   [src/lib/keyStore.js](src/lib/keyStore.js).
+- The first time you connect on a device, you approve PrivRec once on the
+  Sia Storage page. That approval is tied to your account, so reconnecting
+  later on the same device is silent.
 - "Disconnect" wipes the stored key and you'll need your phrase again.
 
 ## Indexer
@@ -83,17 +85,23 @@ if you deploy it:
 ```
 src/
   App.jsx              routing + WASM init / auth gate
+  main.jsx             app entry point
   hooks/
     useRecorder.js     camera/screen capture with MediaRecorder
   lib/
     sia.js             Sia SDK wrapper: connect, reconnect, upload, share
     keyStore.js        encrypted-at-rest storage for the App Key
+    shareLink.js       build and parse share-link URLs
+    redirect.js        open-redirect / URL scheme validation
   pages/
     Onboarding.jsx     generate/enter recovery phrase + approval flow
     Recorder.jsx       record screen or camera
     Upload.jsx         encrypt, upload, pick expiry, get a link
     Play.jsx           stream and decrypt a shared recording
 ```
+
+Each `lib/` module (`sia`, `keyStore`, `shareLink`, `redirect`) has a matching
+`.test.js` file with unit tests.
 
 ## Acknowledgement
 
