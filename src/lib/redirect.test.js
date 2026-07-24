@@ -39,6 +39,16 @@ describe('consumeReturnTo', () => {
     expect(consumeReturnTo()).toBeNull()
   })
 
+  it('rejects a backslash-prefixed URL (browsers normalize /\\ to //)', () => {
+    sessionStorage.setItem('privrec_return_to', '/\\evil.com')
+    expect(consumeReturnTo()).toBeNull()
+  })
+
+  it('accepts a normal relative path with a query string', () => {
+    sessionStorage.setItem('privrec_return_to', '/play?x=1')
+    expect(consumeReturnTo()).toBe('/play?x=1')
+  })
+
   it('rejects an empty string', () => {
     sessionStorage.setItem('privrec_return_to', '')
     expect(consumeReturnTo()).toBeNull()

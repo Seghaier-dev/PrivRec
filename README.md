@@ -13,12 +13,16 @@ end-to-end encrypted and only people you send the link to can watch them.
    pastes theirs in), then approves PrivRec once on the Sia Storage page. The
    phrase is the only key to your account — write it down somewhere safe,
    because we can't recover it.
-2. **Record.** Capture your camera (with mic) or your screen, right in the
-   browser. Pick which camera/mic to use before you start.
+2. **Record.** Capture your camera (with mic), your screen, or both together
+   (screen with a camera bubble in the corner), right in the browser. Pick
+   which camera/mic to use before you start.
 3. **Upload & share.** The recording is encrypted, uploaded to Sia, and you get
    a link. Choose how long it stays alive (1 hour up to "never").
 4. **Watch.** Anyone with the link and a Sia account can stream and decrypt the
    video. The page streams it as it downloads so playback starts quickly.
+5. **Manage.** The "My recordings" dashboard lists everything you've uploaded
+   with account storage stats. From there you can mint a fresh share link for
+   any recording (with its own expiry) or delete recordings you no longer need.
 
 ## Tech
 
@@ -87,17 +91,20 @@ src/
   App.jsx              routing + WASM init / auth gate
   main.jsx             app entry point
   hooks/
-    useRecorder.js     camera/screen capture with MediaRecorder
+    useRecorder.js     camera/screen/PiP capture with MediaRecorder
   lib/
     sia.js             Sia SDK wrapper: connect, reconnect, upload, share
+    recordings.js      recording history: event-log replay, metadata, sizes
     keyStore.js        encrypted-at-rest storage for the App Key
     shareLink.js       build and parse share-link URLs
     redirect.js        open-redirect / URL scheme validation
   pages/
     Onboarding.jsx     generate/enter recovery phrase + approval flow
-    Recorder.jsx       record screen or camera
+    Recorder.jsx       record screen, camera, or both (picture-in-picture)
     Upload.jsx         encrypt, upload, pick expiry, get a link
     Play.jsx           stream and decrypt a shared recording
+    History.jsx        recording dashboard: share links, deletion, account stats
+    Account.jsx        account page: storage usage, quota, key and app details
 ```
 
 Each `lib/` module (`sia`, `keyStore`, `shareLink`, `redirect`) has a matching

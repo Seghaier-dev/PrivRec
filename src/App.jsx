@@ -5,6 +5,8 @@ import Onboarding from './pages/Onboarding'
 import Recorder from './pages/Recorder'
 import Upload from './pages/Upload'
 import Play from './pages/Play'
+import History from './pages/History'
+import Account from './pages/Account'
 
 function RequireAuth({ children }) {
   return hasStoredKey() ? children : <Navigate to="/" replace />
@@ -49,6 +51,8 @@ function App() {
         <Route path="/" element={hasStoredKey() ? <Navigate to="/record" /> : <Onboarding />} />
         <Route path="/record" element={<RequireAuth><Recorder /></RequireAuth>} />
         <Route path="/upload" element={<RequireAuth><Upload /></RequireAuth>} />
+        <Route path="/history" element={<RequireAuth><History /></RequireAuth>} />
+        <Route path="/account" element={<RequireAuth><Account /></RequireAuth>} />
         {/* /play is intentionally unauthenticated at the route level — anyone with
             a share link can reach it. Play.jsx itself redirects to onboarding if
             reconnect() fails, since decryption requires a Sia account. */}

@@ -189,7 +189,7 @@ export default function Upload() {
                 {copied ? '✓ Copied!' : 'Copy link'}
               </button>
               <button
-                onClick={() => window.open(buildPlayUrl(shareUrl), '_blank')}
+                onClick={() => window.open(buildPlayUrl(shareUrl), '_blank', 'noopener')}
                 className="w-full py-3 border border-blue-200 text-blue-600 rounded-xl text-sm font-medium hover:bg-blue-50 transition-colors"
               >
                 Watch in browser →
@@ -203,6 +203,12 @@ export default function Upload() {
               className="w-full py-3 border border-blue-200 text-blue-600 rounded-xl text-sm font-medium hover:bg-blue-50 transition-colors"
             >
               ← Record another
+            </button>
+            <button
+              onClick={() => navigate('/history')}
+              className="w-full py-3 border border-blue-200 text-blue-600 rounded-xl text-sm font-medium hover:bg-blue-50 transition-colors"
+            >
+              My recordings →
             </button>
           </>
         )}
