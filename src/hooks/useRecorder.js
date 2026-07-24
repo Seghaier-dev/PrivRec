@@ -28,6 +28,9 @@ export function useRecorder() {
   const timerRef = useRef(null)
   const streamRef = useRef(null)
   const recordingRef = useRef(false)
+  // PiP mode owns extra resources (source streams, canvas loop, AudioContext)
+  // that outlive the composite stream's tracks. Stored as one teardown fn.
+  const pipCleanupRef = useRef(null)
 
   // On unmount: stop the recorder, then the tracks, then the timer.
   useEffect(() => {
@@ -37,6 +40,10 @@ export function useRecorder() {
       }
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop())
+      }
+      if (pipCleanupRef.current) {
+        pipCleanupRef.current()
+        pipCleanupRef.current = null
       }
       clearInterval(timerRef.current)
     }
@@ -113,6 +120,134 @@ export function useRecorder() {
     }
   }
 
+  // Wait until a <video> element has real dimensions to draw from.
+  function videoReady(video) {
+    return new Promise((resolve, reject) => {
+      if (video.readyState >= 2 && video.videoWidth) return resolve()
+      video.onloadedmetadata = () => resolve()
+      video.onerror = () => reject(new Error('video failed to load'))
+    })
+  }
+
+  // Picture-in-picture: screen capture with the camera composited into a
+  // corner bubble. Both feeds are drawn onto a canvas every frame and the
+  // canvas stream is what gets recorded; mic (and any screen audio) is mixed
+  // in through an AudioContext.
+  async function startPip() {
+    setError('')
+    setBlob(null)
+
+    let screen = null
+    let camera = null
+    try {
+      screen = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: true,
+      })
+    } catch (e) {
+      setError(friendlyMediaError(e, 'Screen'))
+      return
+    }
+    try {
+      camera = await navigator.mediaDevices.getUserMedia({
+        video: selectedCamera ? { deviceId: { exact: selectedCamera } } : true,
+        audio: selectedMic ? { deviceId: { exact: selectedMic } } : true,
+      })
+    } catch (e) {
+      screen.getTracks().forEach(t => t.stop())
+      setError(friendlyMediaError(e, 'Camera'))
+      return
+    }
+
+    try {
+      await loadDevices(false)
+
+      // Hidden <video> elements to pull frames from. Never added to the DOM.
+      const screenVideo = document.createElement('video')
+      const cameraVideo = document.createElement('video')
+      for (const [v, s] of [[screenVideo, screen], [cameraVideo, camera]]) {
+        v.srcObject = s
+        v.muted = true
+        v.playsInline = true
+      }
+      await Promise.all([
+        videoReady(screenVideo), videoReady(cameraVideo),
+        screenVideo.play(), cameraVideo.play(),
+      ])
+
+      const screenTrack = screen.getVideoTracks()[0]
+      const { width = 1280, height = 720 } = screenTrack.getSettings()
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+
+      // Camera bubble: bottom-right, ~22% of the screen width, camera aspect
+      // ratio preserved.
+      let rafId = 0
+      function draw() {
+        rafId = requestAnimationFrame(draw)
+
+        ctx.drawImage(screenVideo, 0, 0, canvas.width, canvas.height)
+
+        const camW = Math.round(canvas.width * 0.22)
+        const camAspect =
+          (cameraVideo.videoHeight || 9) / (cameraVideo.videoWidth || 16)
+        const camH = Math.round(camW * camAspect)
+        const pad = Math.round(canvas.width * 0.02)
+        const x = canvas.width - camW - pad
+        const y = canvas.height - camH - pad
+        const r = Math.round(camW * 0.08)
+
+        ctx.save()
+        ctx.beginPath()
+        ctx.roundRect(x, y, camW, camH, r)
+        ctx.clip()
+        ctx.drawImage(cameraVideo, x, y, camW, camH)
+        ctx.restore()
+      }
+      draw()
+
+      // Mix mic + screen audio (if the user shared a tab with sound).
+      const audioCtx = new AudioContext()
+      const dest = audioCtx.createMediaStreamDestination()
+      for (const s of [camera, screen]) {
+        if (s.getAudioTracks().length) {
+          audioCtx.createMediaStreamSource(s).connect(dest)
+        }
+      }
+
+      const composite = new MediaStream([
+        ...canvas.captureStream(30).getVideoTracks(),
+        ...dest.stream.getAudioTracks(),
+      ])
+
+      pipCleanupRef.current = () => {
+        cancelAnimationFrame(rafId)
+        screen.getTracks().forEach(t => t.stop())
+        camera.getTracks().forEach(t => t.stop())
+        screenVideo.srcObject = null
+        cameraVideo.srcObject = null
+        audioCtx.close().catch(() => {})
+      }
+
+      // The composite stream's tracks never end on their own — watch the real
+      // screen track for the browser's own "Stop sharing" button.
+      screenTrack.onended = () => stopRecording()
+
+      streamRef.current = composite
+      beginRecording(composite)
+    } catch (e) {
+      screen.getTracks().forEach(t => t.stop())
+      camera.getTracks().forEach(t => t.stop())
+      if (pipCleanupRef.current) {
+        pipCleanupRef.current()
+        pipCleanupRef.current = null
+      }
+      setError(friendlyMediaError(e, 'Picture-in-picture'))
+    }
+  }
+
   function beginRecording(stream) {
     chunksRef.current = []
     const mimeType = getSupportedMimeType()
@@ -138,6 +273,10 @@ export function useRecorder() {
       })
       setBlob(finalBlob)
       stream.getTracks().forEach(t => t.stop())
+      if (pipCleanupRef.current) {
+        pipCleanupRef.current()
+        pipCleanupRef.current = null
+      }
       clearInterval(timerRef.current)
       setRecordingTime(0)
       setRecording(false)
@@ -183,6 +322,7 @@ export function useRecorder() {
     error,
     startCamera,
     startScreen,
+    startPip,
     stopRecording,
     reset,
     streamRef,
