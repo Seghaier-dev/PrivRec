@@ -18,6 +18,7 @@ export default function Recorder() {
     error,
     startCamera,
     startScreen,
+    startPip,
     stopRecording,
     reset,
     streamRef,
@@ -94,6 +95,16 @@ export default function Recorder() {
             >
               🖥️ Screen
             </button>
+            <button
+              onClick={() => setMode('pip')}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                mode === 'pip'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              🖼️ Screen + Camera
+            </button>
           </div>
         )}
 
@@ -115,26 +126,40 @@ export default function Recorder() {
           </div>
         )}
 
-        {/* Right: Account menu */}
-        <div className="relative" ref={menuRef}>
+        {/* Right: History link + account menu */}
+        <div className="flex items-center gap-3">
           <button
-            onClick={() => setMenuOpen(o => !o)}
-            className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-colors"
+            onClick={() => navigate('/history')}
+            className="text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
-            </svg>
+            My recordings
           </button>
-          {menuOpen && (
-            <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-xl shadow-lg py-1 z-10">
-              <button
-                onClick={handleLogout}
-                className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-50 transition-colors"
-              >
-                Disconnect
-              </button>
-            </div>
-          )}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen(o => !o)}
+              className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+              </svg>
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-xl shadow-lg py-1 z-10">
+                <button
+                  onClick={() => navigate('/account')}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Account stats
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-50 transition-colors"
+                >
+                  Disconnect
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
       </div>
@@ -163,8 +188,8 @@ export default function Recorder() {
           )}
         </div>
 
-        {/* Device selectors — camera mode only, shown above the start button */}
-        {mode === 'camera' && !recording && !blob && (
+        {/* Device selectors — shown when the camera is involved (camera & PiP modes) */}
+        {(mode === 'camera' || mode === 'pip') && !recording && !blob && (
           <div className="flex gap-3 w-full max-w-xl">
             <div className="flex flex-col gap-1 flex-1">
               <label className="text-xs text-gray-400 uppercase tracking-wider">Camera</label>
@@ -202,7 +227,9 @@ export default function Recorder() {
         {/* Controls */}
         {!recording && !blob && (
           <button
-            onClick={mode === 'camera' ? startCamera : startScreen}
+            onClick={
+              mode === 'camera' ? startCamera : mode === 'screen' ? startScreen : startPip
+            }
             className="px-8 py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
           >
             Start recording
