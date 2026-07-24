@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { connectWithPhrase, completeRegistration, pollApproval, generateSeedPhrase, saveIndexerUrl, loadIndexerUrl } from '../lib/sia'
 import { consumeReturnTo } from '../lib/redirect'
@@ -14,6 +14,8 @@ export default function Onboarding() {
   const [error, setError] = useState('')
   const [showIndexer, setShowIndexer] = useState(false)
   const [indexerUrl, setIndexerUrl] = useState(loadIndexerUrl)
+  // Lets the "Cancel" button stop an in-flight approval wait.
+  const cancelApprovalRef = useRef(null)
 
   function handleGenerate() {
     const p = generateSeedPhrase()
@@ -72,6 +74,74 @@ export default function Onboarding() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Open the approval popup and wait for the indexer to report approval.
+  //
+  // Deliberately does NOT watch popup.closed: the Sia Storage page can close
+  // the popup right after approval (losing the race against our next poll),
+  // and cross-origin-opener-policy can make .closed report true while the
+  // window is still open. Both used to surface a bogus "window was closed"
+  // error after a successful approval. Instead we rely on the poll itself,
+  // a 5-minute deadline, and an explicit Cancel button.
+  function startApproval() {
+    setError('')
+    setLoading(true)
+
+    const w = 900, h = 700
+    const left = Math.round((screen.width - w) / 2)
+    const top = Math.round((screen.height - h) / 2)
+    const popup = window.open(
+      approvalUrl,
+      'sia_approval',
+      `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`
+    )
+    // Popup blocked — fall back to navigating this tab.
+    if (!popup) { window.location.href = approvalUrl; return }
+    // Sever the popup's window.opener so the cross-origin approval page
+    // (untrusted for a user-supplied custom indexer) can't rewrite this tab
+    // (reverse tabnabbing). Setting .opener (rather than passing 'noopener'
+    // as a window.open feature) keeps our own `popup` reference working, so
+    // the blocked-popup check above and closePopup()/popup.closed below are
+    // unaffected — 'noopener' as a feature makes window.open() always
+    // return null, which would break both.
+    try { popup.opener = null } catch { /* best effort */ }
+
+    let done = false
+
+    function closePopup() {
+      try { if (!popup.closed) popup.close() } catch { /* COOP may block access */ }
+    }
+
+    function abort(msg) {
+      if (done) return
+      done = true
+      clearTimeout(deadline)
+      cancelApprovalRef.current = null
+      closePopup()
+      setLoading(false)
+      if (msg) setError(msg)
+    }
+
+    // Guards against the indexer never responding.
+    const deadline = setTimeout(() => {
+      abort('Approval timed out. Please try again.')
+    }, 5 * 60 * 1000)
+
+    cancelApprovalRef.current = () => abort('')
+
+    pollApproval()
+      .then(() => {
+        if (done) return
+        done = true
+        clearTimeout(deadline)
+        cancelApprovalRef.current = null
+        closePopup()
+        handleApproved()
+      })
+      .catch(e => {
+        abort(e?.message || 'Something went wrong waiting for approval. Please try again.')
+      })
   }
 
   const words = phrase.trim().split(/\s+/).filter(Boolean)
@@ -222,65 +292,26 @@ export default function Onboarding() {
               </p>
             </div>
             <button
-              onClick={() => {
-                const w = 900, h = 700
-                const left = Math.round((screen.width - w) / 2)
-                const top = Math.round((screen.height - h) / 2)
-                const popup = window.open(
-                  approvalUrl,
-                  'sia_approval',
-                  `width=${w},height=${h},left=${left},top=${top},resizable=yes,scrollbars=yes`
-                )
-                if (!popup) { window.location.href = approvalUrl; return }
-                let done = false
-                let timer
-
-                function abort(msg) {
-                  if (done) return
-                  done = true
-                  clearInterval(timer)
-                  if (!popup.closed) popup.close()
-                  setLoading(false)
-                  setError(msg)
-                }
-
-                function finish() {
-                  if (done) return
-                  done = true
-                  clearInterval(timer)
-                  if (!popup.closed) popup.close()
-                  handleApproved()
-                }
-
-                // If the popup closes before pollApproval resolves, the user
-                // dismissed it — stop waiting and show an actionable message.
-                timer = setInterval(() => {
-                  if (popup.closed && !done) {
-                    abort('The approval window was closed. Click the button again to retry.')
-                  }
-                }, 500)
-
-                // A 5-minute timeout guards against the indexer never responding.
-                const deadline = setTimeout(() => {
-                  abort('Approval timed out. Please try again.')
-                }, 5 * 60 * 1000)
-
-                pollApproval()
-                  .then(() => { clearTimeout(deadline); finish() })
-                  .catch(() => { clearTimeout(deadline) })
-              }}
-              className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
+              onClick={startApproval}
+              disabled={loading}
+              className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-40"
             >
               Log in with Sia Storage
             </button>
             {loading && (
-              <div className="flex items-center justify-center gap-2">
+              <div className="flex items-center justify-center gap-3">
                 <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm text-gray-500">Signing in…</p>
+                <p className="text-sm text-gray-500">Waiting for approval…</p>
+                <button
+                  onClick={() => cancelApprovalRef.current?.()}
+                  className="text-sm text-gray-400 hover:text-gray-600 underline"
+                >
+                  Cancel
+                </button>
               </div>
             )}
             <button
-              onClick={() => { setStep(1); setError('') }}
+              onClick={() => { cancelApprovalRef.current?.(); setStep(1); setError('') }}
               className="w-full py-3 border border-blue-200 text-blue-600 rounded-xl text-sm font-medium hover:bg-blue-50 transition-colors"
             >
               ← Go back
