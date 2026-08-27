@@ -59,7 +59,7 @@ export async function listRecordings(sdk) {
 
 // "1.2 GB" style formatting for the stats cards.
 export function formatBytes(n) {
-  if (!Number.isFinite(n) || n < 0) return '—'
+  if (!Number.isFinite(n) || n < 0) return '-'
   if (n === 0) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB', 'TB']
   const i = Math.min(Math.floor(Math.log2(n) / 10), units.length - 1)

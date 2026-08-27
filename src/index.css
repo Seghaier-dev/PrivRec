@@ -1,1 +1,12 @@
 @import "tailwindcss";
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: theme(--color-gray-900);
+    color: white;
+  }
+}

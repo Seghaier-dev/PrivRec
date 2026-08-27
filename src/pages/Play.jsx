@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { initSdk, reconnect } from '../lib/sia'
 import { parseShareUrl } from '../lib/shareLink'
+import { Logo } from '../components/AppHeader'
+import { IconLock } from '../components/icons'
 
 // Turn a raw SDK/network error into something a person can actually read.
 // The Sia SDK throws things like:
@@ -175,79 +177,88 @@ export default function Play() {
         window.location.pathname + window.location.search + window.location.hash
       )
     } catch { /* sessionStorage unavailable */ }
-    navigate('/')
+    navigate('/signin')
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-950 flex flex-col items-center justify-center px-4">
-      <div className="w-full max-w-3xl space-y-6">
-
-        <div className="text-center">
-          <h1 className="text-xl font-medium mb-1">PrivRec</h1>
-          <p className="text-sm text-gray-400">Private by design</p>
+    <div className="flex min-h-screen flex-col bg-gray-50 text-gray-950">
+      <header className="border-b border-gray-200 bg-white">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
+          <a href="/" aria-label="PrivRec home"><Logo /></a>
+          <span className="flex items-center gap-1.5 text-xs text-gray-400">
+            <IconLock size={12} />
+            End-to-end encrypted
+          </span>
         </div>
+      </header>
 
-        <div className="w-full aspect-video bg-gray-100 rounded-xl overflow-hidden flex items-center justify-center">
+      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center gap-4 px-4 py-8 sm:px-6">
+        <div className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-gray-950 shadow-sm">
           {status === 'ready' && videoUrl ? (
             <video
               src={videoUrl}
               controls
               autoPlay
-              className="w-full h-full object-contain"
+              className="h-full w-full object-contain"
             />
           ) : status === 'needsauth' ? (
-            <div className="text-center space-y-4 px-6">
-              <p className="text-sm text-gray-700">Connect your Sia account to watch this video.</p>
-              <p className="text-gray-500 text-xs">
-                This recording is end-to-end encrypted. You need your own Sia account to stream and decrypt it.
-              </p>
+            <div className="max-w-sm space-y-4 px-6 text-center">
+              <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-gray-300">
+                <IconLock size={18} />
+              </span>
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium text-white">Connect your Sia account to watch</p>
+                <p className="text-xs leading-relaxed text-gray-400">
+                  This recording is end-to-end encrypted. You need your own Sia
+                  account to stream and decrypt it.
+                </p>
+              </div>
               <button
                 onClick={handleConnect}
-                className="px-6 py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
+                className="rounded-lg bg-white px-5 py-2.5 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-200"
               >
                 Connect account
               </button>
             </div>
           ) : status === 'error' ? (
-            <div className="text-center space-y-3 px-6">
-              <p className="text-red-500 text-sm">{error}</p>
-              <button
-                onClick={() => {
-                  setStatus('loading')
-                  setError('')
-                  setVideoUrl('')
-                  setRetryCount(c => c + 1)
-                }}
-                className="px-6 py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
-              >
-                Try again
-              </button>
-              <a href="/" className="block text-sm text-blue-600 hover:text-blue-700 transition-colors">
-                Go to home page
-              </a>
+            <div className="max-w-sm space-y-4 px-6 text-center">
+              <p className="text-sm text-red-400">{error}</p>
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    setStatus('loading')
+                    setError('')
+                    setVideoUrl('')
+                    setRetryCount(c => c + 1)
+                  }}
+                  className="rounded-lg bg-white px-5 py-2.5 text-sm font-medium text-gray-900 transition-colors hover:bg-gray-200"
+                >
+                  Try again
+                </button>
+                <a href="/" className="block text-xs text-gray-400 underline underline-offset-2 hover:text-gray-200">
+                  Go to home page
+                </a>
+              </div>
             </div>
           ) : (
-            <div className="text-center space-y-3">
-              <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-sm text-gray-500">
+            <div className="space-y-3 text-center">
+              <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-gray-600 border-t-white" />
+              <p className="text-sm text-gray-300">
                 {status === 'downloading' ? 'Decrypting and loading video...' : 'Initializing...'}
               </p>
               {status === 'downloading' && (
-                <p className="text-xs text-gray-400">
-                  This may take a moment for large files
-                </p>
+                <p className="text-xs text-gray-500">This may take a moment for large files</p>
               )}
             </div>
           )}
         </div>
 
         {status === 'ready' && (
-          <p className="text-xs text-gray-400 text-center">
+          <p className="text-center text-xs text-gray-400">
             This video is end-to-end encrypted. Only people with this link can watch it.
           </p>
         )}
-
-      </div>
+      </main>
     </div>
   )
 }

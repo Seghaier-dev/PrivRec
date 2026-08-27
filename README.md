@@ -15,7 +15,7 @@ end-to-end encrypted and only people you send the link to can watch them.
    because we can't recover it.
 2. **Record.** Capture your camera (with mic), your screen, or both together
    (screen with a camera bubble in the corner), right in the browser. Pick
-   which camera/mic to use before you start.
+   which camera/mic to use with a live preview before you start.
 3. **Upload & share.** The recording is encrypted, uploaded to Sia, and you get
    a link. Choose how long it stays alive (1 hour up to "never").
 4. **Watch.** Anyone with the link and a Sia account can stream and decrypt the
@@ -60,8 +60,18 @@ You'll need a recent Node.js (18+).
 ## Indexer
 
 By default the app uses `https://sia.storage` as its indexer. You can point it
-at your own — including a local one — from the onboarding screen. Run your own
-with the open-source [indexd](https://github.com/SiaFoundation/indexd).
+at your own — including a local one — from the onboarding screen, or later
+from the **Settings** page (switching indexers disconnects the device, since
+App Keys are tied to the indexer that issued them). Run your own with the
+open-source [indexd](https://github.com/SiaFoundation/indexd).
+
+## Self-hosting
+
+PrivRec is a fully static app — no backend to run. Build it and drop `dist/`
+on any static file host. See the [self-hosting guide](docs/self-hosting.md)
+for build steps, SPA fallback and security-header configuration (nginx, Caddy,
+Netlify, Cloudflare Pages), and the privacy properties of a self-hosted
+deployment.
 
 ## Security notes
 
@@ -98,17 +108,19 @@ src/
     keyStore.js        encrypted-at-rest storage for the App Key
     shareLink.js       build and parse share-link URLs
     redirect.js        open-redirect / URL scheme validation
+    indexer.js         indexer URL validation (HTTPS-only, localhost exception)
   pages/
     Onboarding.jsx     generate/enter recovery phrase + approval flow
     Recorder.jsx       record screen, camera, or both (picture-in-picture)
-    Upload.jsx         encrypt, upload, pick expiry, get a link
+    Upload.jsx         encrypt, upload, pick expiry, share result page
     Play.jsx           stream and decrypt a shared recording
     History.jsx        recording dashboard: share links, deletion, account stats
     Account.jsx        account page: storage usage, quota, key and app details
+    Settings.jsx       indexer configuration
 ```
 
-Each `lib/` module (`sia`, `keyStore`, `shareLink`, `redirect`) has a matching
-`.test.js` file with unit tests.
+Each `lib/` module (`sia`, `keyStore`, `shareLink`, `redirect`, `indexer`) has
+a matching `.test.js` file with unit tests.
 
 ## Acknowledgement
 
