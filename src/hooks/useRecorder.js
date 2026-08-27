@@ -186,8 +186,6 @@ export function useRecorder() {
       // ratio preserved.
       let rafId = 0
       function draw() {
-        rafId = requestAnimationFrame(draw)
-
         ctx.drawImage(screenVideo, 0, 0, canvas.width, canvas.height)
 
         const camW = Math.round(canvas.width * 0.22)
@@ -205,6 +203,8 @@ export function useRecorder() {
         ctx.clip()
         ctx.drawImage(cameraVideo, x, y, camW, camH)
         ctx.restore()
+
+        rafId = requestAnimationFrame(draw)
       }
       draw()
 
@@ -331,5 +331,8 @@ export function useRecorder() {
     selectedMic,
     setSelectedCamera,
     setSelectedMic,
+    // Re-enumerate devices without touching the current selection. Used by the
+    // live preview: labels only become available after a getUserMedia grant.
+    refreshDevices: () => loadDevices(false),
   }
 }
