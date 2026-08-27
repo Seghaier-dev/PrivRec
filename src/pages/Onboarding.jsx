@@ -2,6 +2,9 @@ import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { connectWithPhrase, completeRegistration, pollApproval, generateSeedPhrase, saveIndexerUrl, loadIndexerUrl } from '../lib/sia'
 import { consumeReturnTo } from '../lib/redirect'
+import { validateIndexerUrl } from '../lib/indexer'
+import { Logo } from '../components/AppHeader'
+import { IconLock, IconArrowLeft } from '../components/icons'
 
 export default function Onboarding() {
   const navigate = useNavigate()
@@ -27,16 +30,9 @@ export default function Onboarding() {
   async function handleConnect() {
     setError('')
 
-    let parsedIndexer
-    try {
-      parsedIndexer = new URL(indexerUrl)
-    } catch {
-      setError('Invalid indexer URL. Please enter a valid URL.')
-      return
-    }
-    const isLocalIndexer = ['localhost', '127.0.0.1', '[::1]'].includes(parsedIndexer.hostname)
-    if (parsedIndexer.protocol !== 'https:' && !(parsedIndexer.protocol === 'http:' && isLocalIndexer)) {
-      setError('Indexer URL must use HTTPS.')
+    const indexerError = validateIndexerUrl(indexerUrl)
+    if (indexerError) {
+      setError(indexerError)
       return
     }
 
@@ -98,14 +94,6 @@ export default function Onboarding() {
     )
     // Popup blocked — fall back to navigating this tab.
     if (!popup) { window.location.href = approvalUrl; return }
-    // Sever the popup's window.opener so the cross-origin approval page
-    // (untrusted for a user-supplied custom indexer) can't rewrite this tab
-    // (reverse tabnabbing). Setting .opener (rather than passing 'noopener'
-    // as a window.open feature) keeps our own `popup` reference working, so
-    // the blocked-popup check above and closePopup()/popup.closed below are
-    // unaffected — 'noopener' as a feature makes window.open() always
-    // return null, which would break both.
-    try { popup.opener = null } catch { /* best effort */ }
 
     let done = false
 
@@ -149,30 +137,38 @@ export default function Onboarding() {
   const canConnect = phraseValid && (tab === 'existing' || savedChecked)
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-950 flex flex-col items-center justify-center px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-10 text-gray-950">
       <div className="w-full max-w-md space-y-6">
 
-        <div className="text-center space-y-1">
-          <h1 className="text-3xl font-medium">PrivRec</h1>
-          <p className="text-sm text-gray-500">
-            Record your screen or camera.<br/>
-            Encrypted and stored on Sia.
-          </p>
+        <div className="flex flex-col items-center gap-3 text-center">
+          <Logo />
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">
+              {step === 1 ? 'Sign in to PrivRec' : 'One more step'}
+            </h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Record your screen or camera. Encrypted, stored on Sia.
+            </p>
+          </div>
         </div>
 
         {step === 1 && (
-          <div className="space-y-4">
+          <div className="space-y-5 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 
             {/* Tabs */}
-            <div className="flex border-b border-gray-200">
+            <div className="flex rounded-lg border border-gray-200 bg-gray-100 p-1">
               <button
-                className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${tab === 'new' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400'}`}
+                className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-all ${
+                  tab === 'new' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'
+                }`}
                 onClick={() => { setTab('new'); setPhrase(''); setSavedChecked(false); setError('') }}
               >
                 New account
               </button>
               <button
-                className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${tab === 'existing' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400'}`}
+                className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-all ${
+                  tab === 'existing' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'
+                }`}
                 onClick={() => { setTab('existing'); setPhrase(''); setError('') }}
               >
                 I have a phrase
@@ -181,32 +177,40 @@ export default function Onboarding() {
 
             {tab === 'new' && (
               <div className="space-y-4">
-                <p className="text-sm text-gray-500">
-                  Generate a recovery phrase. Write it down and store it safely —
-                  it is the only way to access your recordings from a new device.
+                <p className="text-sm leading-relaxed text-gray-500">
+                  Generate a recovery phrase and write it down somewhere safe.
+                  It's the only way to access your recordings from a new device.
                 </p>
-                <button
-                  onClick={handleGenerate}
-                  className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
-                >
-                  Generate recovery phrase
-                </button>
+                {!phraseValid && (
+                  <button
+                    onClick={handleGenerate}
+                    className="w-full rounded-lg bg-gray-900 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-800"
+                  >
+                    Generate recovery phrase
+                  </button>
+                )}
                 {phraseValid && (
                   <>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 gap-1.5">
                       {words.map((word, i) => (
-                        <div key={i} className="bg-gray-100 rounded-lg px-3 py-2 text-sm flex gap-2">
-                          <span className="text-gray-400 text-xs w-4">{i + 1}</span>
-                          <span className="font-mono font-medium">{word}</span>
+                        <div key={i} className="flex items-baseline gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5">
+                          <span className="w-4 text-right text-[11px] tabular-nums text-gray-400">{i + 1}</span>
+                          <span className="truncate font-mono text-[13px] text-gray-800">{word}</span>
                         </div>
                       ))}
                     </div>
-                    <label className="flex items-center gap-3 cursor-pointer">
+                    <button
+                      onClick={handleGenerate}
+                      className="text-xs font-medium text-gray-400 transition-colors hover:text-gray-600"
+                    >
+                      Generate a different phrase
+                    </button>
+                    <label className="flex cursor-pointer items-center gap-2.5">
                       <input
                         type="checkbox"
                         checked={savedChecked}
                         onChange={e => setSavedChecked(e.target.checked)}
-                        className="w-4 h-4 rounded"
+                        className="h-4 w-4 rounded accent-gray-900"
                       />
                       <span className="text-sm text-gray-700">
                         I have written down my phrase
@@ -218,7 +222,7 @@ export default function Onboarding() {
             )}
 
             {tab === 'existing' && (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <p className="text-sm text-gray-500">
                   Enter your 12-word recovery phrase to connect your account.
                 </p>
@@ -227,12 +231,10 @@ export default function Onboarding() {
                   onChange={e => { setPhrase(e.target.value); setError('') }}
                   placeholder="word1 word2 word3 ... word12"
                   rows={3}
-                  className="w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-400 resize-none"
+                  className="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-sm transition-colors focus:border-gray-400 focus:outline-none"
                 />
                 {words.length > 0 && words.length < 12 && (
-                  <p className="text-xs text-gray-400">
-                    {words.length} / 12 words
-                  </p>
+                  <p className="text-xs tabular-nums text-gray-400">{words.length} / 12 words</p>
                 )}
               </div>
             )}
@@ -240,17 +242,17 @@ export default function Onboarding() {
             <button
               onClick={handleConnect}
               disabled={!canConnect || loading}
-              className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full rounded-lg bg-gray-900 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {loading ? 'Connecting...' : 'Connect'}
             </button>
 
-            <div className="space-y-2">
+            <div className="space-y-2 border-t border-gray-100 pt-4">
               <button
                 onClick={() => setShowIndexer(!showIndexer)}
-                className="w-full py-3 border border-blue-200 text-blue-600 rounded-xl text-sm font-medium hover:bg-blue-50 transition-colors"
+                className="text-xs font-medium text-gray-400 transition-colors hover:text-gray-600"
               >
-                {showIndexer ? 'Use default indexer' : 'Use custom indexer'}
+                {showIndexer ? 'Use default indexer' : 'Use a custom indexer'}
               </button>
               {showIndexer && (
                 <div className="space-y-2">
@@ -259,15 +261,15 @@ export default function Onboarding() {
                     value={indexerUrl}
                     onChange={e => setIndexerUrl(e.target.value)}
                     placeholder="https://your-indexer.example.com"
-                    className="w-full bg-gray-100 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
+                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-xs transition-colors focus:border-gray-400 focus:outline-none"
                   />
                   <p className="text-xs text-gray-400">
-                    Run your own indexer using the open-source
+                    Run your own indexer with the open-source{' '}
                     <a
                       href="https://github.com/SiaFoundation/indexd"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-500 hover:text-blue-700 ml-1"
+                      className="font-medium text-gray-600 underline decoration-gray-300 underline-offset-2 hover:text-gray-900"
                     >
                       indexd
                     </a>
@@ -280,31 +282,28 @@ export default function Onboarding() {
         )}
 
         {step === 2 && (
-          <div className="space-y-5">
-            <div className="border border-blue-100 bg-blue-50 rounded-xl p-5 space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blue-500" />
-                <p className="text-sm font-semibold text-blue-800">Log in with Sia Storage</p>
-              </div>
-              <p className="text-sm text-blue-700 leading-relaxed">
+          <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-gray-900">Approve PrivRec on Sia Storage</p>
+              <p className="text-sm leading-relaxed text-gray-500">
                 Open the Sia Storage page and log in to PrivRec.
-                You'll be signed in automatically once you're done.
+                You'll be signed in here automatically once you're done.
               </p>
             </div>
             <button
               onClick={startApproval}
               disabled={loading}
-              className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-40"
+              className="w-full rounded-lg bg-gray-900 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-800 disabled:opacity-50"
             >
               Log in with Sia Storage
             </button>
             {loading && (
               <div className="flex items-center justify-center gap-3">
-                <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm text-gray-500">Waiting for approval…</p>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-900 border-t-transparent" />
+                <p className="text-sm text-gray-500">Waiting for approval...</p>
                 <button
                   onClick={() => cancelApprovalRef.current?.()}
-                  className="text-sm text-gray-400 hover:text-gray-600 underline"
+                  className="text-sm text-gray-400 underline underline-offset-2 hover:text-gray-600"
                 >
                   Cancel
                 </button>
@@ -312,16 +311,22 @@ export default function Onboarding() {
             )}
             <button
               onClick={() => { cancelApprovalRef.current?.(); setStep(1); setError('') }}
-              className="w-full py-3 border border-blue-200 text-blue-600 rounded-xl text-sm font-medium hover:bg-blue-50 transition-colors"
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
             >
-              ← Go back
+              <IconArrowLeft size={14} />
+              Go back
             </button>
           </div>
         )}
 
         {error && (
-          <p className="text-sm text-red-500 text-center">{error}</p>
+          <p className="text-center text-sm text-red-600">{error}</p>
         )}
+
+        <p className="flex items-center justify-center gap-1.5 text-xs text-gray-400">
+          <IconLock size={12} />
+          No servers of ours. Your videos are end-to-end encrypted.
+        </p>
 
       </div>
     </div>

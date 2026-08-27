@@ -144,8 +144,8 @@ describe('formatBytes', () => {
   })
 
   it('handles garbage input', () => {
-    expect(formatBytes(-1)).toBe('—')
-    expect(formatBytes(NaN)).toBe('—')
-    expect(formatBytes(Infinity)).toBe('—')
+    expect(formatBytes(-1)).toBe('-')
+    expect(formatBytes(NaN)).toBe('-')
+    expect(formatBytes(Infinity)).toBe('-')
   })
 })

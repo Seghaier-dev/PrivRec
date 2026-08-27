@@ -1,10 +1,11 @@
 export function consumeReturnTo() {
   try {
     const to = sessionStorage.getItem('privrec_return_to')
-    // Accept only genuine relative paths: a single leading / not followed by
-    // another / or a \. // is a protocol-relative URL, and browsers normalize
-    // a leading /\ to // too — both would send window.location.href off-origin.
-    if (to && /^\/(?!\/|\\)/.test(to)) {
+    // Accept only genuine relative paths: must start with / but not //
+    // (// is a protocol-relative URL that the browser treats as absolute).
+    // Backslashes are rejected too — browsers normalize \ to /, so /\evil.com
+    // would otherwise be treated as //evil.com.
+    if (to && to.startsWith('/') && !to.startsWith('//') && !to.includes('\\')) {
       sessionStorage.removeItem('privrec_return_to')
       return to
     } else if (to) {

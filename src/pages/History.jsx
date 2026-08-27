@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { getSdk, reconnect } from '../lib/sia'
 import { listRecordings, formatBytes } from '../lib/recordings'
 import { buildPlayUrl } from '../lib/shareLink'
+import AppHeader from '../components/AppHeader'
+import { IconVideo, IconCopy, IconCheck, IconExternal, IconTrash, IconLink } from '../components/icons'
 
 const EXPIRY_OPTIONS = [
   { label: '1 hour',   ms: 60 * 60 * 1000 },
@@ -66,34 +68,43 @@ function RecordingRow({ rec, onDelete }) {
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-colors hover:border-gray-300">
       <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-medium truncate">{rec.name}</p>
-          <p className="text-xs text-gray-400">
-            {rec.date.toLocaleString()} · {formatBytes(rec.size)}
-          </p>
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-gray-300">
+            <IconVideo size={16} />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-gray-900">{rec.name}</p>
+            <p className="text-xs text-gray-400">
+              {rec.date.toLocaleString()} · {formatBytes(rec.size)}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
           <button
             onClick={() => { setExpanded(e => !e); setConfirmingDelete(false) }}
-            className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors"
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+              expanded
+                ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                : 'bg-gray-900 text-white hover:bg-gray-800'
+            }`}
           >
-            {expanded ? 'Close' : shareUrl ? 'Share ✓' : 'Share'}
+            {expanded ? 'Close' : 'Share'}
           </button>
           {confirmingDelete ? (
             <>
               <button
                 onClick={handleDelete}
                 disabled={deleting}
-                className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-medium hover:bg-red-700 transition-colors disabled:opacity-40"
+                className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
               >
                 {deleting ? 'Deleting...' : 'Confirm'}
               </button>
               <button
                 onClick={() => setConfirmingDelete(false)}
                 disabled={deleting}
-                className="px-3 py-1.5 border border-gray-200 text-gray-500 rounded-lg text-xs font-medium hover:bg-gray-50 transition-colors"
+                className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-50"
               >
                 Cancel
               </button>
@@ -101,26 +112,27 @@ function RecordingRow({ rec, onDelete }) {
           ) : (
             <button
               onClick={() => setConfirmingDelete(true)}
-              className="px-3 py-1.5 border border-red-200 text-red-500 rounded-lg text-xs font-medium hover:bg-red-50 transition-colors"
+              aria-label="Delete recording"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
             >
-              Delete
+              <IconTrash size={14} />
             </button>
           )}
         </div>
       </div>
 
       {expanded && (
-        <div className="pt-3 border-t border-gray-100 space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-gray-500">Link expires after:</span>
+        <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-xs text-gray-500">Expires after</span>
             {EXPIRY_OPTIONS.map(opt => (
               <button
                 key={opt.label}
                 onClick={() => setExpiry(opt)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
                   expiry.label === opt.label
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-blue-50 hover:text-blue-600'
+                    ? 'border-gray-900 bg-gray-900 text-white'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
                 }`}
               >
                 {opt.label}
@@ -129,27 +141,30 @@ function RecordingRow({ rec, onDelete }) {
           </div>
           <button
             onClick={generateLink}
-            className="w-full py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 py-2 text-xs font-medium text-white transition-colors hover:bg-gray-800"
           >
+            <IconLink size={13} />
             {shareUrl ? 'Regenerate link' : 'Create share link'}
           </button>
           {shareUrl && (
-            <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-              <p className="text-xs font-mono text-gray-700 break-all">
+            <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+              <p className="break-all font-mono text-xs leading-relaxed text-gray-700">
                 {buildPlayUrl(shareUrl)}
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={copyLink}
-                  className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors"
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-gray-900 py-2 text-xs font-medium text-white transition-colors hover:bg-gray-800"
                 >
-                  {copied ? '✓ Copied!' : 'Copy link'}
+                  {copied ? <IconCheck size={13} /> : <IconCopy size={13} />}
+                  {copied ? 'Copied' : 'Copy link'}
                 </button>
                 <button
-                  onClick={() => window.open(buildPlayUrl(shareUrl), '_blank', 'noopener')}
-                  className="flex-1 py-2 border border-blue-200 text-blue-600 rounded-lg text-xs font-medium hover:bg-blue-50 transition-colors"
+                  onClick={() => window.open(buildPlayUrl(shareUrl), '_blank', 'noopener,noreferrer')}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-300 bg-white py-2 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
                 >
-                  Watch →
+                  <IconExternal size={13} />
+                  Watch
                 </button>
               </div>
             </div>
@@ -157,16 +172,16 @@ function RecordingRow({ rec, onDelete }) {
         </div>
       )}
 
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </div>
   )
 }
 
-function StatCard({ label, value }) {
+function Stat({ label, value }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4">
-      <p className="text-xs text-gray-400 uppercase tracking-wider">{label}</p>
-      <p className="text-lg font-medium mt-1">{value}</p>
+    <div>
+      <p className="text-xs text-gray-400">{label}</p>
+      <p className="mt-0.5 text-sm font-semibold tabular-nums tracking-tight text-gray-900">{value}</p>
     </div>
   )
 }
@@ -211,27 +226,23 @@ export default function History() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-950">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-        <span className="text-lg font-semibold tracking-tight">PrivRec</span>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate('/account')}
-            className="text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors"
-          >
-            Account stats
-          </button>
+      <AppHeader />
+
+      <div className="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">Library</h1>
+            <p className="mt-0.5 text-sm text-gray-500">
+              All your encrypted recordings, in one place.
+            </p>
+          </div>
           <button
             onClick={() => navigate('/record')}
-            className="text-sm text-gray-500 hover:text-gray-700 font-medium transition-colors"
+            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-800"
           >
-            ← Back to recorder
+            New recording
           </button>
         </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-        <h1 className="text-2xl font-medium">My recordings</h1>
 
         {status === 'loading' && (
           <p className="text-sm text-gray-400">Loading your recordings...</p>
@@ -239,10 +250,10 @@ export default function History() {
 
         {status === 'error' && (
           <div className="space-y-3">
-            <p className="text-sm text-red-500">{error}</p>
+            <p className="text-sm text-red-600">{error}</p>
             <button
               onClick={() => window.location.reload()}
-              className="text-sm text-gray-400 hover:text-gray-600"
+              className="text-sm text-gray-400 underline underline-offset-2 hover:text-gray-600"
             >
               Try again
             </button>
@@ -253,20 +264,47 @@ export default function History() {
           <>
             {/* Account stats from the Sia account API */}
             {account && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <StatCard label="Recordings" value={recordings.length} />
-                <StatCard label="Stored" value={formatBytes(account.pinnedData)} />
-                <StatCard label="Remaining" value={formatBytes(account.remainingStorage)} />
-                <StatCard label="Quota" value={formatBytes(account.maxPinnedData)} />
+              <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="flex items-baseline justify-between">
+                  <p className="text-sm font-medium">Storage</p>
+                  {account.maxPinnedData > 0 && (
+                    <p className="text-xs tabular-nums text-gray-400">
+                      {Math.min(100, Math.round((account.pinnedData / account.maxPinnedData) * 100))}% of quota used
+                    </p>
+                  )}
+                </div>
+                {account.maxPinnedData > 0 && (
+                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+                    <div
+                      className="h-full rounded-full bg-gray-900 transition-all"
+                      style={{
+                        width:
+                          Math.min(100, Math.round((account.pinnedData / account.maxPinnedData) * 100)) + '%',
+                      }}
+                    />
+                  </div>
+                )}
+                <div className="mt-4 grid grid-cols-2 gap-4 border-t border-gray-100 pt-4 sm:grid-cols-4">
+                  <Stat label="Recordings" value={recordings.length} />
+                  <Stat label="Stored" value={formatBytes(account.pinnedData)} />
+                  <Stat label="Remaining" value={formatBytes(account.remainingStorage)} />
+                  <Stat label="Quota" value={formatBytes(account.maxPinnedData)} />
+                </div>
               </div>
             )}
 
             {recordings.length === 0 ? (
-              <div className="text-center py-12 space-y-3">
-                <p className="text-sm text-gray-400">No recordings yet.</p>
+              <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-gray-300 bg-white py-14 text-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+                  <IconVideo size={20} />
+                </span>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-gray-900">No recordings yet</p>
+                  <p className="text-sm text-gray-400">Your uploads will show up here.</p>
+                </div>
                 <button
                   onClick={() => navigate('/record')}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
+                  className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-800"
                 >
                   Make your first recording
                 </button>
